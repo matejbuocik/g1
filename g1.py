@@ -1,0 +1,181 @@
+# Import pygame and colors module
+import pygame, colors
+from pygame.locals import *
+
+# Import random's randint function
+from random import randint  
+
+
+
+# Define constants for screen width and height
+S_WIDTH = 800
+S_HEIGHT = 600
+
+
+# Define a player class by extending pygame.sprite.Sprite
+# The surface drawn on the screen is now attribute of 'player'
+class Player(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.surf = pygame.image.load("player.png").convert_alpha()
+        self.rect = self.surf.get_rect()
+        self.vel = 10 # player's velocity
+
+    def update(self, pressed_keys):
+        # Move the sprite based on user keypress
+        if pressed_keys[K_UP] or pressed_keys[K_w]:
+            self.rect.move_ip(0, -self.vel)
+        if pressed_keys[K_DOWN] or pressed_keys[K_s]:
+            self.rect.move_ip(0, self.vel)
+        if pressed_keys[K_RIGHT] or pressed_keys[K_d]:
+            self.rect.move_ip(self.vel, 0)
+        if pressed_keys[K_LEFT] or pressed_keys[K_a]:
+            self.rect.move_ip(-self.vel, 0)
+
+        # Keep the player on the screen
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > S_WIDTH:
+            self.rect.right = S_WIDTH
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > S_HEIGHT:
+            self.rect.bottom = S_HEIGHT
+
+
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.surf = pygame.image.load('enemy.png').convert_alpha()
+        # Starting position is randomly generated
+        self.rect = self.surf.get_rect(
+            center = (
+                randint(S_WIDTH + 20, S_WIDTH + 100),
+                randint(0, S_HEIGHT)
+            )
+        )
+        # Velocity is randomly generated
+        self.vel = randint(5,20)
+
+    def update(self):
+        self.rect.move_ip(-self.vel, 0)
+        if self.rect.right < 0:
+            self.kill()
+
+
+class Cloud(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.surf = pygame.image.load('cloud.png').convert_alpha()
+        self.rect = self.surf.get_rect(
+            center = (
+                randint(S_WIDTH+20, S_WIDTH+100),
+                randint(0, S_HEIGHT)
+            )
+        )
+        # Clouds' velocity
+        self.vel = 5
+    
+    def update(self):
+        self.rect.move_ip(-self.vel, 0)
+        if self.rect.right < 0:
+            self.kill()
+
+
+# Initialize pygame
+pygame.init()
+
+# Create the screen object
+# The size is determined by constants - S_WIDTH and S_HEIGHT
+screen = pygame.display.set_mode((S_WIDTH, S_HEIGHT))
+
+# Create a custom event for adding new enemies
+# Set a timer for creating enemies
+# Can be set outside the mainloop
+ADDENEMY = pygame.USEREVENT + 1
+pygame.time.set_timer(ADDENEMY, 250)
+# Event for adding clouds
+ADDCLOUD = pygame.USEREVENT + 2
+pygame.time.set_timer(ADDCLOUD, 1000)
+
+# Set screen caption
+pygame.display.set_caption('g1')
+
+# Instantiate player. Right now, this is just a rectangle
+player = Player()
+
+# Create groups to hold enemy sprites, cloud sprites and all sprites
+# - enemies is used for collision detection and position updates
+# - clouds is used for position updates
+# - allSprites is used for rendering
+enemies = pygame.sprite.Group()
+allSprites = pygame.sprite.Group()
+clouds = pygame.sprite.Group()
+allSprites.add(player)
+
+
+# Variable to keep the main loop running
+running = True
+
+# Setup the clock
+FPSCLOCK = pygame.time.Clock()
+# Set FPS
+FPS = 40
+
+# Main loop 
+while running:
+
+    # for loop through the event queue
+    for event in pygame.event.get():
+        # Check for QUIT event. If QUIT, then set running to False
+        if event.type == QUIT:
+            running = False
+        # Check for KEYDOWN - ESCAPE event. If True, set running to False
+        elif event.type == KEYDOWN and event.key == K_ESCAPE:
+            running = False
+
+        # Add a new enemy?
+        elif event.type == ADDENEMY:
+            # Create a new enemy and add it to sprite groups
+            new_enemy = Enemy()
+            enemies.add(new_enemy)
+            allSprites.add(new_enemy)
+
+        # Add a new cloud?
+        elif event.type == ADDCLOUD:
+            # Create a new cloud and add it to sprite groups
+            new_cloud = Cloud()
+            clouds.add(new_cloud)
+            allSprites.add(new_cloud)
+
+    # Get the set of keys pressed and check for user input
+    # Update the player sprite based on user keypress
+    keys = pygame.key.get_pressed()
+    player.update(keys)
+    
+    # Update the position of enemies and clouds
+    enemies.update()
+    clouds.update()
+
+    # Fill the screen with sky blue
+    screen.fill(colors.SKY)
+
+    # Draw all sprites
+    for entity in allSprites:
+        screen.blit(entity.surf, entity.rect)
+
+    # Check if any enemies have collided with the player
+    if pygame.sprite.spritecollideany(player, enemies):
+        # If so, then remove the player and stop the loop
+        player.kill()
+        running = False
+
+    # Update the display
+    pygame.display.update()
+
+    # Tick the clock
+    # Ensure the program mantains a rate of constant FPS
+    FPSCLOCK.tick(FPS)
+
+# Deinitialize the pygame
+pygame.quit()
