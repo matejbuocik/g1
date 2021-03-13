@@ -20,6 +20,8 @@ class Player(pygame.sprite.Sprite):
         self.surf = pygame.image.load("player.png").convert_alpha()
         self.rect = self.surf.get_rect()
         self.vel = 10 # player's velocity
+        self.cooldown = 400 # cooldown between shots
+        self.last = pygame.time.get_ticks() # time of last shot
 
     def update(self, pressed_keys):
         # Move the sprite based on user keypress
@@ -42,7 +44,43 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > S_HEIGHT:
             self.rect.bottom = S_HEIGHT
 
+    def shoot(self):
+        now = pygame.time.get_ticks() # time right now
+        # If now - last is bigger than cooldown, the player can shoot
+        if now - self.last >= self.cooldown:
+            # Create a shot sprite
+            # Set x and y of shot to start straight from the player's plane
+            new_shot = Shot(self.rect.right, self.rect.midright) 
+            # Add to sprite groups
+            shots.add(new_shot)
+            allSprites.add(new_shot)
+            # Change last to now
+            self.last = now
 
+
+# Class of Shots
+class Shot(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.surf = pygame.Surface((13, 13)) # size of surf
+        self.surf.fill(colors.BLACK)
+        self.rect = self.surf.get_rect(left = x, midleft = y) # start straight from the plane
+        self.vel = 10 # velocity of shot
+
+    def update(self):
+        self.rect.move_ip(self.vel, 0)
+        if self.rect.left > S_WIDTH:
+            self.kill()
+
+        collidedWith = pygame.sprite.spritecollideany(self, enemies)
+        # Check if collided with any enemy sprite
+        # If True kill self and kill the enemy
+        if collidedWith:
+            self.kill() 
+            collidedWith.kill()
+
+
+# Class of enemy rockets
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -63,13 +101,15 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
 
 
+# Class of random clouds
 class Cloud(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.surf = pygame.image.load('cloud.png').convert_alpha()
+        # Random beginning position
         self.rect = self.surf.get_rect(
             center = (
-                randint(S_WIDTH+20, S_WIDTH+100),
+                randint(S_WIDTH+20, S_WIDTH+100), # behind the right end of screen
                 randint(0, S_HEIGHT)
             )
         )
@@ -106,9 +146,11 @@ player = Player()
 
 # Create groups to hold enemy sprites, cloud sprites and all sprites
 # - enemies is used for collision detection and position updates
+# - shots is used for collision detection and position updates
 # - clouds is used for position updates
 # - allSprites is used for rendering
 enemies = pygame.sprite.Group()
+shots = pygame.sprite.Group()
 allSprites = pygame.sprite.Group()
 clouds = pygame.sprite.Group()
 allSprites.add(player)
@@ -130,9 +172,14 @@ while running:
         # Check for QUIT event. If QUIT, then set running to False
         if event.type == QUIT:
             running = False
-        # Check for KEYDOWN - ESCAPE event. If True, set running to False
-        elif event.type == KEYDOWN and event.key == K_ESCAPE:
-            running = False
+        # Check for KEYDOWN
+        elif event.type == KEYDOWN:
+            # ESCAPE pressed. If True, set running to False
+            if event.key == K_ESCAPE:
+                running = False
+            # SPACE pressed. If True, the player shoots
+            elif event.key == K_SPACE:
+                player.shoot()
 
         # Add a new enemy?
         elif event.type == ADDENEMY:
@@ -153,8 +200,9 @@ while running:
     keys = pygame.key.get_pressed()
     player.update(keys)
     
-    # Update the position of enemies and clouds
+    # Update the position of enemies, shots and clouds
     enemies.update()
+    shots.update()
     clouds.update()
 
     # Fill the screen with sky blue
