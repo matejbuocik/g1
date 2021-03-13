@@ -42,6 +42,11 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > S_HEIGHT:
             self.rect.bottom = S_HEIGHT
 
+        if pressed_keys[K_SPACE]:
+            self.shoot()
+
+    def shoot(self):
+        
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
