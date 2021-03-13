@@ -46,7 +46,7 @@ class Player(pygame.sprite.Sprite):
             self.shoot()
 
     def shoot(self):
-        
+        pass
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
