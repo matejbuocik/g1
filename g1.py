@@ -134,6 +134,7 @@ class ScreenInfo:
         self.kills = 0 # Kills
         self.updateKill = False # Update kill count on screen?
         self.updateTime = False # Update time on the screen?
+        self.score = 0 # Score
         
         # Create surface for timer in the beginning
         self.surf0 = self.font.render(str(self.stopwatch), True, colors.WHITE) # Text surface, antialiasing True
@@ -155,6 +156,7 @@ class ScreenInfo:
     
     def update(self):
         self.timer()
+        self.score = self.kills + .2 * self.stopwatch # Calculate the score
 
         # Timer surface
         if self.updateTime:
@@ -275,10 +277,10 @@ while running:
         running = False
 
     # Update the display
-    pygame.display.update()
+    pygame.display.update()  
 
     # Tick the clock
-    # Ensure the program mantains a rate of constant FPS
+    # Ensure the program mantains a constant FPS
     FPSCLOCK.tick(FPS)
 
 # Deinitialize the pygame
