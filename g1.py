@@ -1,6 +1,5 @@
 # Import pygame and colors module
 import pygame, colors
-from pygame import color
 from pygame.locals import *
 
 # Import random's randint function
