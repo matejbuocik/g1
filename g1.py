@@ -62,7 +62,7 @@ class Player(pygame.sprite.Sprite):
 class Shot(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.surf = pygame.Surface((20, 15)) # size of surf
+        self.surf = pygame.Surface((15, 12)) # size of surf
         self.surf.fill(colors.BLACK)
         self.rect = self.surf.get_rect(left = x, midleft = y) # start straight from the plane
         self.vel = 15 # velocity of shot
