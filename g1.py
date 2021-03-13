@@ -67,7 +67,7 @@ class Shot(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(left = x, midleft = y) # start straight from the plane
         self.vel = 15 # velocity of shot
 
-    def update(self):
+    def update(self, infoscreen):
         self.rect.move_ip(self.vel, 0)
         if self.rect.left > S_WIDTH:
             self.kill()
@@ -78,6 +78,8 @@ class Shot(pygame.sprite.Sprite):
         if collidedWith:
             self.kill() 
             collidedWith.kill()
+            # Add 1 to infoscreen kill count
+            infoscreen.killCount()
 
 
 # Class of enemy rockets
@@ -122,6 +124,50 @@ class Cloud(pygame.sprite.Sprite):
             self.kill()
 
 
+# Class for on-screen information
+class ScreenInfo:
+    def __init__(self):
+        super().__init__()
+        self.font = pygame.font.Font('freesansbold.ttf', 55) # New font object
+        self.start_time = pygame.time.get_ticks() # Start of the game time
+        self.stopwatch = 0 # Time since the start
+        self.kills = 0 # Kills
+        self.updateKill = False # Update kill count on screen?
+        self.updateTime = False # Update time on the screen?
+        
+        # Create surface for timer in the beginning
+        self.surf0 = self.font.render(str(self.stopwatch), True, colors.WHITE) # Text surface, antialiasing True
+        self.rect0 = self.surf0.get_rect(bottomleft = (10, S_HEIGHT - 10))
+
+        # Create surface for kills in the beginning
+        self.surf1 = self.font.render(str(self.kills), True, colors.RED) # Text surface, antialiasing True
+        self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
+
+    def timer(self):
+        time = int((pygame.time.get_ticks() - self.start_time) / 1000) # time in whole seconds
+        if time % 1 == 0: # Update time every second
+            self.stopwatch = time
+            self.updateTime = True
+
+    def killCount(self): # Update on-screen kill count
+        self.kills += 1
+        self.updateKill = True
+    
+    def update(self):
+        self.timer()
+
+        # Timer surface
+        if self.updateTime:
+            self.surf0 = self.font.render(str(self.stopwatch), True, colors.WHITE) # Text surface, antialiasing True
+            self.rect0 = self.surf0.get_rect(bottomleft = (10, S_HEIGHT - 10))
+            self.updateTime = False
+
+        # Kill count surface
+        if self.updateKill:
+            self.surf1 = self.font.render(str(self.kills), True, colors.RED) # Text surface, antialiasing True
+            self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
+            self.updateKill = False
+
 # Initialize pygame
 pygame.init()
 
@@ -143,6 +189,9 @@ pygame.display.set_caption('g1')
 
 # Instantiate player. Right now, this is just a rectangle
 player = Player()
+
+# Instantiate screen info
+screenInfo = ScreenInfo()
 
 # Create groups to hold enemy sprites, cloud sprites and all sprites
 # - enemies is used for collision detection and position updates
@@ -202,11 +251,18 @@ while running:
     
     # Update the position of enemies, shots and clouds
     enemies.update()
-    shots.update()
+    shots.update(screenInfo)
     clouds.update()
+
+    # Update the info screen
+    screenInfo.update()
 
     # Fill the screen with sky blue
     screen.fill(colors.SKY)
+
+    # Draw the screen information
+    screen.blit(screenInfo.surf0, screenInfo.rect0)
+    screen.blit(screenInfo.surf1, screenInfo.rect1)
 
     # Draw all sprites
     for entity in allSprites:
