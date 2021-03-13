@@ -49,20 +49,23 @@ class Player(pygame.sprite.Sprite):
         # If now - last is bigger than cooldown, the player can shoot
         if now - self.last >= self.cooldown:
             # Create a shot sprite
-            new_shot = Shot(self.rect.right, self.rect.midright)
+            # Set x and y of shot to start straight from the player's plane
+            new_shot = Shot(self.rect.right, self.rect.midright) 
+            # Add to sprite groups
             shots.add(new_shot)
             allSprites.add(new_shot)
             # Change last to now
             self.last = now
 
 
+# Class of Shots
 class Shot(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.surf = pygame.Surface((13,13 ))
+        self.surf = pygame.Surface((13, 13)) # size of surf
         self.surf.fill(colors.BLACK)
-        self.rect = self.surf.get_rect(left = x, midleft = y)
-        self.vel = 10
+        self.rect = self.surf.get_rect(left = x, midleft = y) # start straight from the plane
+        self.vel = 10 # velocity of shot
 
     def update(self):
         self.rect.move_ip(self.vel, 0)
@@ -77,6 +80,7 @@ class Shot(pygame.sprite.Sprite):
             collidedWith.kill()
 
 
+# Class of enemy rockets
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -97,13 +101,15 @@ class Enemy(pygame.sprite.Sprite):
             self.kill()
 
 
+# Class of random clouds
 class Cloud(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.surf = pygame.image.load('cloud.png').convert_alpha()
+        # Random beginning position
         self.rect = self.surf.get_rect(
             center = (
-                randint(S_WIDTH+20, S_WIDTH+100),
+                randint(S_WIDTH+20, S_WIDTH+100), # behind the right end of screen
                 randint(0, S_HEIGHT)
             )
         )
