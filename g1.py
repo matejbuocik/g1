@@ -1,3 +1,5 @@
+# Based on https://realpython.com/pygame-a-primer/
+
 # Import pygame and colors module
 import pygame, colors
 from pygame.locals import *
@@ -22,6 +24,8 @@ class Player(pygame.sprite.Sprite):
         self.vel = 10 # player's velocity
         self.cooldown = 400 # cooldown between shots
         self.last = pygame.time.get_ticks() # time of last shot
+        self.lives = 3 # player's lives
+        self.kills = 0 # player's kills
 
     def update(self, pressed_keys):
         # Move the sprite based on user keypress
@@ -57,6 +61,16 @@ class Player(pygame.sprite.Sprite):
             # Change last to now
             self.last = now
 
+    # Update player's and on-screen kills
+    def killCount(self):
+        self.kills += 1
+        screenInfo.killCount(self.kills)
+
+    # Update player's and on-screen lives
+    def lifeCount(self):
+        self.lives -= 1
+        screenInfo.lifeCount(self.lives)
+
 
 # Class of Shots
 class Shot(pygame.sprite.Sprite):
@@ -67,7 +81,7 @@ class Shot(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(midright = pos) # start straight from the plane
         self.vel = 15 # velocity of shot
 
-    def update(self, infoscreen):
+    def update(self):
         self.rect.move_ip(self.vel, 0)
         if self.rect.left > S_WIDTH:
             self.kill()
@@ -78,8 +92,8 @@ class Shot(pygame.sprite.Sprite):
         if collidedWith:
             self.kill() 
             collidedWith.kill()
-            # Add 1 to infoscreen kill count
-            infoscreen.killCount()
+            # Add 1 to player's kill count
+            player.killCount()
             # Make a BOOM
             newExplosion = Explosion(self.rect.midright)
             explosions.add(newExplosion)
@@ -156,45 +170,56 @@ class ScreenInfo:
         super().__init__()
         self.font = pygame.font.Font('freesansbold.ttf', 55) # New font object
         self.start_time = pygame.time.get_ticks() # Start of the game time
-        self.stopwatch = 0 # Time since the start
-        self.kills = 0 # Kills
-        self.updateKill = False # Update kill count on screen?
-        self.updateTime = False # Update time on the screen?
-        self.score = 0 # Score
-        
+        self.stopwatch = 0 # Time since the start of the game
+
         # Create surface for timer in the beginning
         self.surf0 = self.font.render(str(self.stopwatch), True, colors.WHITE) # Text surface, antialiasing True
         self.rect0 = self.surf0.get_rect(bottomleft = (10, S_HEIGHT - 10))
 
         # Create surface for kills in the beginning
-        self.surf1 = self.font.render(str(self.kills), True, colors.RED) # Text surface, antialiasing True
+        self.surf1 = self.font.render(str(player.kills), True, colors.RED) # Text surface, antialiasing True
         self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
+
+        # Create surface for lives in the beginning
+        self.heartSurf = heartSprite
+        self.heartRects = []
+        # Create corresponding rectangles
+        for i in range(player.lives):
+            self.heartRects.append( self.heartSurf.get_rect(right = S_WIDTH - 100 - i * (heartSpriteWidth + 10), bottom = S_HEIGHT - 20 ) )
+
+        # All sprites and rects for rendering purposes (lazy coder)
+        self.all = [(self.surf0, self.rect0), (self.surf1, self.rect1)]
 
     def timer(self):
         time = int((pygame.time.get_ticks() - self.start_time) / 1000) # time in whole seconds
         if time % 1 == 0: # Update time every second
             self.stopwatch = time
-            self.updateTime = True
-
-    def killCount(self): # Update on-screen kill count
-        self.kills += 1
-        self.updateKill = True
-    
-    def update(self):
-        self.timer()
-        self.score = self.kills + .2 * self.stopwatch # Calculate the score
-
-        # Timer surface
-        if self.updateTime:
+            # Timer surface
             self.surf0 = self.font.render(str(self.stopwatch), True, colors.WHITE) # Text surface, antialiasing True
             self.rect0 = self.surf0.get_rect(bottomleft = (10, S_HEIGHT - 10))
-            self.updateTime = False
+            self.all[0] = (self.surf0, self.rect0)
 
+    def killCount(self, kills): # Update on-screen kill count
         # Kill count surface
-        if self.updateKill:
-            self.surf1 = self.font.render(str(self.kills), True, colors.RED) # Text surface, antialiasing True
-            self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
-            self.updateKill = False
+        self.surf1 = self.font.render(str(kills), True, colors.RED) # Text surface, antialiasing True
+        self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
+        self.all[1] = (self.surf1, self.rect1)
+    
+    def lifeCount(self, lives): # Update on-screen lives count
+        # if player's lives are smaller than on-screen lives, then remove them from screen
+        if lives < len(self.heartRects):
+            self.heartRects.pop(-1)
+        # if player's lives are bigger than on-screen, then add them
+        else:
+            # How many lives to add
+            for i in range(lives - len(self.heartRects)):
+                # Make a rectangle 
+                rect = self.heartSurf.get_rect(
+                    right = S_WIDTH - 100 - len(self.heartRects) * (heartSpriteWidth + 10) - i * (heartSpriteWidth + 10), 
+                    bottom = S_HEIGHT - 20 
+                )
+                # Add it to heartRects (show it on screen)
+                self.heartRects.append(rect)
 
 
 # Initialize pygame
@@ -209,24 +234,26 @@ playerSprite = pygame.image.load("things/player.png").convert_alpha()
 enemySprite = pygame.image.load('things/enemy.png').convert_alpha()
 cloudSprite = pygame.image.load('things/cloud.png').convert_alpha()
 boomSprites = (
-            pygame.image.load('things/boom0.png').convert_alpha(),
-            pygame.image.load('things/boom1.png').convert_alpha(),
-            pygame.image.load('things/boom2.0.png').convert_alpha(),
-            pygame.image.load('things/boom2.5.png').convert_alpha(),
-            pygame.image.load('things/boom3.png').convert_alpha(),
-            pygame.image.load('things/boom4.0.png').convert_alpha(),
-            pygame.image.load('things/boom4.5.png').convert_alpha(),
-            pygame.image.load('things/boom5.png').convert_alpha(),
-            pygame.image.load('things/boom6.0.png').convert_alpha(),
-            pygame.image.load('things/boom6.5.png').convert_alpha(),
-            pygame.image.load('things/boom7.0.png').convert_alpha(),
-            pygame.image.load('things/boom7.5.png').convert_alpha(),
-            pygame.image.load('things/boom8.png').convert_alpha(),
-            pygame.image.load('things/boom9.png').convert_alpha(),
-            pygame.image.load('things/boom10.png').convert_alpha(),
-            pygame.image.load('things/boom11.png').convert_alpha(),
-            pygame.image.load('things/boom12.png').convert_alpha()
+            pygame.image.load('things/boom/boom0.png').convert_alpha(),
+            pygame.image.load('things/boom/boom1.png').convert_alpha(),
+            pygame.image.load('things/boom/boom2.0.png').convert_alpha(),
+            pygame.image.load('things/boom/boom2.5.png').convert_alpha(),
+            pygame.image.load('things/boom/boom3.png').convert_alpha(),
+            pygame.image.load('things/boom/boom4.0.png').convert_alpha(),
+            pygame.image.load('things/boom/boom4.5.png').convert_alpha(),
+            pygame.image.load('things/boom/boom5.png').convert_alpha(),
+            pygame.image.load('things/boom/boom6.0.png').convert_alpha(),
+            pygame.image.load('things/boom/boom6.5.png').convert_alpha(),
+            pygame.image.load('things/boom/boom7.0.png').convert_alpha(),
+            pygame.image.load('things/boom/boom7.5.png').convert_alpha(),
+            pygame.image.load('things/boom/boom8.png').convert_alpha(),
+            pygame.image.load('things/boom/boom9.png').convert_alpha(),
+            pygame.image.load('things/boom/boom10.png').convert_alpha(),
+            pygame.image.load('things/boom/boom11.png').convert_alpha(),
+            pygame.image.load('things/boom/boom12.png').convert_alpha()
 )
+heartSprite = pygame.image.load('things/heart.png').convert_alpha()
+heartSpriteWidth = heartSprite.get_width()
 
 # Create a custom event for adding new enemies
 # Set a timer for creating enemies
@@ -306,19 +333,23 @@ while running:
     
     # Update the position of enemies, shots, clouds and explosions
     enemies.update()
-    shots.update(screenInfo)
+    shots.update()
     clouds.update()
     explosions.update()
 
-    # Update the info screen
-    screenInfo.update()
+    # Run the timer
+    screenInfo.timer()
 
     # Fill the screen with sky blue
     screen.fill(colors.SKY)
 
-    # Draw the screen information
-    screen.blit(screenInfo.surf0, screenInfo.rect0)
-    screen.blit(screenInfo.surf1, screenInfo.rect1)
+    # Draw the screen information, use screenInfo's all tuple
+    for s, r in screenInfo.all:
+        # blit each surface on it's rect
+        screen.blit(s, r)
+    # Draw hearts
+    for r in screenInfo.heartRects:
+        screen.blit(screenInfo.heartSurf, r)
 
     # Draw all sprites
     for entity in allSprites:
@@ -327,9 +358,17 @@ while running:
     # Check if any enemies have collided with the player
     collidedWith = pygame.sprite.spritecollideany(player, enemies)
     if collidedWith:
-        # If so, then remove the player and stop the loop
-        player.kill()
-        running = False
+        # Update player's lives
+        player.lifeCount()
+        # Kill the enemy
+        collidedWith.kill()
+        # If player has zero lives, quit the game
+        if player.lives == 0:
+            running = False
+        # Make a BOOM
+        newExplosion = Explosion(player.rect.center) # explosion in the center of the player
+        explosions.add(newExplosion)
+        allSprites.add(newExplosion)
 
     # Update the display
     pygame.display.update()  
