@@ -253,6 +253,7 @@ boomSprites = (
             pygame.image.load('things/boom/boom12.png').convert_alpha()
 )
 heartSprite = pygame.image.load('things/heart.png').convert_alpha()
+# Width of heartSprite (used for rendering on screen in ScreenInfo)
 heartSpriteWidth = heartSprite.get_width()
 
 # Create a custom event for adding new enemies
