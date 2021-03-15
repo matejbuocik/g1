@@ -112,6 +112,8 @@ class Explosion(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(center = pos)
         # Velocity of spreading
         self.vel = 1
+        # Play the boom sound
+        boomSound.play()
 
     def update(self):
         # Make a boom
@@ -225,14 +227,20 @@ class ScreenInfo:
 # Initialize pygame
 pygame.init()
 
+
 # Create the screen object
 # The size is determined by constants - S_WIDTH and S_HEIGHT
 screen = pygame.display.set_mode((S_WIDTH, S_HEIGHT))
 
+
 # Sprite image loading
+# player plane
 playerSprite = pygame.image.load("things/player.png").convert_alpha()
+# enemy rocket
 enemySprite = pygame.image.load('things/enemy.png').convert_alpha()
+# cloud
 cloudSprite = pygame.image.load('things/cloud.png').convert_alpha()
+# animation of explosion
 boomSprites = (
             pygame.image.load('things/boom/boom0.png').convert_alpha(),
             pygame.image.load('things/boom/boom1.png').convert_alpha(),
@@ -252,9 +260,16 @@ boomSprites = (
             pygame.image.load('things/boom/boom11.png').convert_alpha(),
             pygame.image.load('things/boom/boom12.png').convert_alpha()
 )
+# boom sound effect
+boomSound = pygame.mixer.Sound('things/boom/boom.ogg')
+boomSound.set_volume(.7) # lower the volume a bit
+# lives hearts
 heartSprite = pygame.image.load('things/heart.png').convert_alpha()
 # Width of heartSprite (used for rendering on screen in ScreenInfo)
 heartSpriteWidth = heartSprite.get_width()
+# Plane sound
+pygame.mixer.music.load('things/plane.ogg')
+pygame.mixer.music.play(-1)
 
 # Create a custom event for adding new enemies
 # Set a timer for creating enemies
