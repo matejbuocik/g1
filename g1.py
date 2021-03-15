@@ -98,6 +98,8 @@ class Shot(pygame.sprite.Sprite):
             newExplosion = Explosion(self.rect.midright)
             explosions.add(newExplosion)
             allSprites.add(newExplosion)
+            # Play boom1 sound
+            boomSound1.play()
 
 
 # Class for Explosions
@@ -112,8 +114,6 @@ class Explosion(pygame.sprite.Sprite):
         self.rect = self.surf.get_rect(center = pos)
         # Velocity of spreading
         self.vel = 1
-        # Play the boom sound
-        boomSound.play()
 
     def update(self):
         # Make a boom
@@ -232,6 +232,9 @@ pygame.init()
 # The size is determined by constants - S_WIDTH and S_HEIGHT
 screen = pygame.display.set_mode((S_WIDTH, S_HEIGHT))
 
+# Set screen caption
+pygame.display.set_caption('g1')
+
 
 # Sprite image loading
 # player plane
@@ -260,9 +263,11 @@ boomSprites = (
             pygame.image.load('things/boom/boom11.png').convert_alpha(),
             pygame.image.load('things/boom/boom12.png').convert_alpha()
 )
-# boom sound effect
-boomSound = pygame.mixer.Sound('things/boom/boom.ogg')
-boomSound.set_volume(.7) # lower the volume a bit
+# boom rocket sound effect
+boomSound1 = pygame.mixer.Sound('things/boom/boom.ogg')
+boomSound1.set_volume(.7) # lower the volume a bit
+# boom plane sound effect
+boomSound2 = pygame.mixer.Sound('things/boom/boom2.ogg')
 # lives hearts
 heartSprite = pygame.image.load('things/heart.png').convert_alpha()
 # Width of heartSprite (used for rendering on screen in ScreenInfo)
@@ -270,6 +275,7 @@ heartSpriteWidth = heartSprite.get_width()
 # Plane sound
 pygame.mixer.music.load('things/plane.ogg')
 pygame.mixer.music.play(-1)
+
 
 # Create a custom event for adding new enemies
 # Set a timer for creating enemies
@@ -280,14 +286,13 @@ pygame.time.set_timer(ADDENEMY, 250)
 ADDCLOUD = pygame.USEREVENT + 2
 pygame.time.set_timer(ADDCLOUD, 1000)
 
-# Set screen caption
-pygame.display.set_caption('g1')
 
 # Instantiate player. Right now, this is just a rectangle
 player = Player()
 
 # Instantiate screen info
 screenInfo = ScreenInfo()
+
 
 # Create groups to hold enemy sprites, cloud sprites and all sprites
 # - enemies is used for collision detection and position updates
@@ -310,6 +315,7 @@ running = True
 FPSCLOCK = pygame.time.Clock()
 # Set FPS
 FPS = 40
+
 
 # Main loop 
 while running:
@@ -385,6 +391,8 @@ while running:
         newExplosion = Explosion(player.rect.center) # explosion in the center of the player
         explosions.add(newExplosion)
         allSprites.add(newExplosion)
+        # play boom2 sound
+        boomSound2.play()
 
     # Update the display
     pygame.display.update()  
