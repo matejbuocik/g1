@@ -2,6 +2,8 @@
 
 # Import pygame and colors module
 import pygame, colors
+# Import sys module for exiting game
+import sys
 from pygame.locals import *
 
 # Import random's randint function
@@ -170,7 +172,7 @@ class Cloud(pygame.sprite.Sprite):
 class ScreenInfo:
     def __init__(self):
         super().__init__()
-        self.font = pygame.font.Font('freesansbold.ttf', 55) # New font object
+        self.font = font
         self.start_time = pygame.time.get_ticks() # Start of the game time
         self.stopwatch = 0 # Time since the start of the game
 
@@ -223,6 +225,114 @@ class ScreenInfo:
                 # Add it to heartRects (show it on screen)
                 self.heartRects.append(rect)
 
+    # Reset life count when starting new game
+    def lifeCountReset(self):
+        for i in range(player.lives):
+            self.heartRects.append( self.heartSurf.get_rect(right = S_WIDTH - 100 - i * (heartSpriteWidth + 10), bottom = S_HEIGHT - 20 ) )
+
+
+
+# Main menu loop
+def menu():
+    # Texts and their rects
+    t1 = font.render('PLAY', True, colors.WHITE)
+    t11 = font.render('PLAY', True, colors.RED)
+    activet1 = t1
+
+    t2 = font.render('QUIT', True, colors.WHITE)
+    t22 = font.render('QUIT', True, colors.RED)
+    activet2 = t2
+
+    r1 = t1.get_rect(center = (S_WIDTH//2, S_HEIGHT//2 - 50))
+    r2 = t2.get_rect(center = (S_WIDTH//2, S_HEIGHT//2 + 50))
+
+    mousePos = (0,0)
+    mouseClicked = False
+
+    # Menu loop
+    runMenu = True
+    while runMenu:
+        # Event check
+        for event in pygame.event.get():
+            e = eventCheck(event)
+
+            if e == QUIT:
+                pygame.quit()
+                sys.exit()
+
+            elif event.type == pygame.MOUSEMOTION:
+                mousePos = event.pos
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                mousePos = event.pos
+                mouseClicked = True
+            
+        # Start button
+        if r1.collidepoint(mousePos):
+            activet1 = t11
+            if mouseClicked:
+                runMenu = False
+                startSound.play()
+        else:
+            activet1 = t1
+        # Quit button
+        if r2.collidepoint(mousePos):
+            activet2 = t22
+            if mouseClicked:
+                pygame.quit()
+                sys.exit()
+        else:
+            activet2 = t2
+
+        # Update enemies and clouds 
+        clouds.update()
+        enemies.update()
+
+        # Fill the screen
+        screen.fill(colors.SKY)
+
+        # Render enemies and clouds
+        for entity in allSprites:
+            screen.blit(entity.surf, entity.rect)
+
+        # Render text
+        screen.blit(activet1, r1)
+        screen.blit(activet2, r2)
+
+        # Update display
+        pygame.display.update()
+        # Tick the clock
+        FPSCLOCK.tick(FPS)
+
+
+# Event checking function
+def eventCheck(event):
+    # Check for QUIT event. If QUIT, then set running to False
+    if event.type == QUIT:
+        return QUIT
+    # Check for KEYDOWN
+    elif event.type == KEYDOWN:
+        # ESCAPE pressed. If True, set running to False
+        if event.key == K_ESCAPE:
+            return QUIT
+        # SPACE pressed. If True, the player shoots
+        elif event.key == K_SPACE:
+            player.shoot()
+
+    # Add a new enemy?
+    elif event.type == ADDENEMY:
+        # Create a new enemy and add it to sprite groups
+        new_enemy = Enemy()
+        enemies.add(new_enemy)
+        allSprites.add(new_enemy)
+
+    # Add a new cloud?
+    elif event.type == ADDCLOUD:
+        # Create a new cloud and add it to sprite groups
+        new_cloud = Cloud()
+        clouds.add(new_cloud)
+        allSprites.add(new_cloud)
+
 
 # Initialize pygame
 pygame.init()
@@ -274,7 +384,11 @@ heartSprite = pygame.image.load('things/heart.png').convert_alpha()
 heartSpriteWidth = heartSprite.get_width()
 # Plane sound
 pygame.mixer.music.load('things/plane.ogg')
-pygame.mixer.music.play(-1)
+pygame.mixer.music.set_volume(.5)
+# Load font
+font = pygame.font.Font('freesansbold.ttf', 55) # New font object
+# Start sound
+startSound = pygame.mixer.Sound('things/start.ogg')
 
 
 # Create a custom event for adding new enemies
@@ -305,11 +419,7 @@ shots = pygame.sprite.Group()
 allSprites = pygame.sprite.Group()
 clouds = pygame.sprite.Group()
 explosions = pygame.sprite.Group()
-allSprites.add(player)
 
-
-# Variable to keep the main loop running
-running = True
 
 # Setup the clock
 FPSCLOCK = pygame.time.Clock()
@@ -317,89 +427,101 @@ FPSCLOCK = pygame.time.Clock()
 FPS = 40
 
 
-# Main loop 
-while running:
+# Play the music
+pygame.mixer.music.play(-1)
 
-    # for loop through the event queue
-    for event in pygame.event.get():
-        # Check for QUIT event. If QUIT, then set running to False
-        if event.type == QUIT:
-            running = False
-        # Check for KEYDOWN
-        elif event.type == KEYDOWN:
-            # ESCAPE pressed. If True, set running to False
-            if event.key == K_ESCAPE:
+# The Game
+def main():
+    # Run the menu
+    menu()
+
+    # Clear all sprites
+    # Add player to allSprites
+    allSprites.empty()
+    enemies.empty()
+    clouds.empty()
+    allSprites.add(player)
+
+    # Variable to keep the main loop running
+    running = True
+
+    # Reset all stats
+    screenInfo.start_time = pygame.time.get_ticks()
+    player.lives = 3
+    player.kills = 0
+    screenInfo.killCount(player.kills)
+    screenInfo.lifeCountReset()
+    player.rect.midleft = (0, S_HEIGHT//2)
+
+    # Main game loop 
+    while running:
+        # for loop through the event queue
+        for event in pygame.event.get():
+            # Check the event
+            e = eventCheck(event)
+            if e == QUIT:
                 running = False
-            # SPACE pressed. If True, the player shoots
-            elif event.key == K_SPACE:
-                player.shoot()
 
-        # Add a new enemy?
-        elif event.type == ADDENEMY:
-            # Create a new enemy and add it to sprite groups
-            new_enemy = Enemy()
-            enemies.add(new_enemy)
-            allSprites.add(new_enemy)
+        # Get the set of keys pressed and check for user input
+        # Update the player sprite based on user keypress
+        keys = pygame.key.get_pressed()
+        player.update(keys)
+        
+        # Update the position of enemies, shots, clouds and explosions
+        enemies.update()
+        shots.update()
+        clouds.update()
+        explosions.update()
 
-        # Add a new cloud?
-        elif event.type == ADDCLOUD:
-            # Create a new cloud and add it to sprite groups
-            new_cloud = Cloud()
-            clouds.add(new_cloud)
-            allSprites.add(new_cloud)
+        # Run the timer
+        screenInfo.timer()
 
-    # Get the set of keys pressed and check for user input
-    # Update the player sprite based on user keypress
-    keys = pygame.key.get_pressed()
-    player.update(keys)
-    
-    # Update the position of enemies, shots, clouds and explosions
-    enemies.update()
-    shots.update()
-    clouds.update()
-    explosions.update()
+        # Fill the screen with sky blue
+        screen.fill(colors.SKY)
 
-    # Run the timer
-    screenInfo.timer()
+        # Draw the screen information, use screenInfo's all tuple
+        for s, r in screenInfo.all:
+            # blit each surface on it's rect
+            screen.blit(s, r)
+        # Draw hearts
+        for r in screenInfo.heartRects:
+            screen.blit(screenInfo.heartSurf, r)
 
-    # Fill the screen with sky blue
-    screen.fill(colors.SKY)
+        # Draw all sprites
+        for entity in allSprites:
+            screen.blit(entity.surf, entity.rect)
 
-    # Draw the screen information, use screenInfo's all tuple
-    for s, r in screenInfo.all:
-        # blit each surface on it's rect
-        screen.blit(s, r)
-    # Draw hearts
-    for r in screenInfo.heartRects:
-        screen.blit(screenInfo.heartSurf, r)
+        # Check if any enemies have collided with the player
+        collidedWith = pygame.sprite.spritecollideany(player, enemies)
+        if collidedWith:
+            # Update player's lives
+            player.lifeCount()
+            # Kill the enemy
+            collidedWith.kill()
+            # If player has zero lives, quit the game
+            if player.lives == 0:
+                running = False
 
-    # Draw all sprites
-    for entity in allSprites:
-        screen.blit(entity.surf, entity.rect)
+            # Make a BOOM
+            newExplosion = Explosion(player.rect.center) # explosion in the center of the player
+            explosions.add(newExplosion)
+            allSprites.add(newExplosion)
+            # play boom2 sound
+            boomSound2.play()
 
-    # Check if any enemies have collided with the player
-    collidedWith = pygame.sprite.spritecollideany(player, enemies)
-    if collidedWith:
-        # Update player's lives
-        player.lifeCount()
-        # Kill the enemy
-        collidedWith.kill()
-        # If player has zero lives, quit the game
-        if player.lives == 0:
-            running = False
-        # Make a BOOM
-        newExplosion = Explosion(player.rect.center) # explosion in the center of the player
-        explosions.add(newExplosion)
-        allSprites.add(newExplosion)
-        # play boom2 sound
-        boomSound2.play()
+        # Update the display
+        pygame.display.update()  
 
-    # Update the display
-    pygame.display.update()  
+        # Tick the clock
+        # Ensure the program mantains a constant FPS
+        FPSCLOCK.tick(FPS)
 
-    # Tick the clock
-    # Ensure the program mantains a constant FPS
-    FPSCLOCK.tick(FPS)
+    # Start again
+    main()
 
+# Run the game
+main()
 # Deinitialize the pygame
 pygame.quit()
+# Exit
+sys.exit()
