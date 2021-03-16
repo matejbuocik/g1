@@ -7,7 +7,7 @@ import sys
 from pygame.locals import *
 
 # Import random's randint function
-from random import randint  
+from random import randint, choice
 
 
 
@@ -27,7 +27,10 @@ class Player(pygame.sprite.Sprite):
         self.cooldown = 400 # cooldown between shots
         self.last = pygame.time.get_ticks() # time of last shot
         self.lives = 3 # player's lives
+        self.maxlives = 5 # max lives
         self.kills = 0 # player's kills
+        self.ammo = 15 # player's ammo
+        self.maxammo = 30 # max ammo
 
     def update(self, pressed_keys):
         # Move the sprite based on user keypress
@@ -50,10 +53,38 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > S_HEIGHT:
             self.rect.bottom = S_HEIGHT
 
+        # Check if collided with bonus
+        collidedWith = pygame.sprite.spritecollideany(self, bonuses)
+        if collidedWith:
+            if collidedWith.surf == heartSprite:
+                # Add one life if not higher than maxlives
+                if self.lives + 1 <= self.maxlives:
+                    self.lifeCount(1)
+                    # Kill the bonus
+                    collidedWith.kill()
+                    # Play bonus sound
+                    bonusSound.play()
+
+            elif collidedWith.surf == ammoSprite:
+                # Add 10 ammo if not higher than maxammo
+                if self.ammo + 10 <= self.maxammo:
+                    self.ammoCount(10)
+                    # Kill the bonus
+                    collidedWith.kill()
+                    # Play bonus sound
+                    bonusSound.play()
+                # Add how much ammo left to max
+                elif self.maxammo - 10 < self.ammo < self.maxammo:
+                    self.ammoCount(self.maxammo - self.ammo)
+                    # Kill the bonus
+                    collidedWith.kill()
+                    # Play bonus sound
+                    bonusSound.play()
+
     def shoot(self):
         now = pygame.time.get_ticks() # time right now
         # If now - last is bigger than cooldown, the player can shoot
-        if now - self.last >= self.cooldown:
+        if now - self.last >= self.cooldown and self.ammo >= 1:
             # Create a shot sprite
             # Set x and y of shot to start straight from the player's plane
             new_shot = Shot(self.rect.midright) 
@@ -62,6 +93,10 @@ class Player(pygame.sprite.Sprite):
             allSprites.add(new_shot)
             # Change last to now
             self.last = now
+            # Lower ammo
+            self.ammoCount(-1)
+        else:
+            noammoSound.play()
 
     # Update player's and on-screen kills
     def killCount(self):
@@ -69,9 +104,14 @@ class Player(pygame.sprite.Sprite):
         screenInfo.killCount(self.kills)
 
     # Update player's and on-screen lives
-    def lifeCount(self):
-        self.lives -= 1
+    def lifeCount(self, n):
+        self.lives += n
         screenInfo.lifeCount(self.lives)
+
+    # Update player's and on-screen ammo
+    def ammoCount(self,n):
+        self.ammo += n
+        screenInfo.ammoCount(self.ammo)
 
 
 # Class of Shots
@@ -170,11 +210,30 @@ class Cloud(pygame.sprite.Sprite):
 
 # Class of flying bonuses
 class Bonus(pygame.sprite.Sprite):
-    pass
+    def __init__(self):
+        super().__init__()
+        self.heartSurf = heartSprite
+        self.ammoSurf = ammoSprite
+        # Active surface
+        self.surf = choice((self.heartSurf, self.ammoSurf))
+        # Rectangle
+        self.rect = self.surf.get_rect(
+            center = (
+                randint(S_WIDTH+20, S_WIDTH+100), # behind the right end of screen
+                randint(0, S_HEIGHT)
+            )
+        )
+        # Velocity
+        self.vel = 15
+
+    def update(self):
+        self.rect.move_ip(-self.vel, 0)
+        if self.rect.right < 0:
+            self.kill
 
 # Class for on-screen information
 class ScreenInfo:
-    def __init__(self):
+    def __init__(self, kills, lives, ammo):
         super().__init__()
         self.font = font
         self.start_time = pygame.time.get_ticks() # Start of the game time
@@ -185,18 +244,22 @@ class ScreenInfo:
         self.rect0 = self.surf0.get_rect(bottomleft = (10, S_HEIGHT - 10))
 
         # Create surface for kills in the beginning
-        self.surf1 = self.font.render(str(player.kills), True, colors.RED) # Text surface, antialiasing True
+        self.surf1 = self.font.render(str(kills), True, colors.RED) # Text surface, antialiasing True
         self.rect1 = self.surf1.get_rect(bottomright = (S_WIDTH - 10, S_HEIGHT - 10))
+
+        # Create surface for ammo in the beginning
+        self.surf2 = self.font.render(str(ammo), True, colors.BLACK)
+        self.rect2 = self.surf2.get_rect(topleft = (10, 10))
 
         # Create surface for lives in the beginning
         self.heartSurf = heartSprite
         self.heartRects = []
         # Create corresponding rectangles
-        for i in range(player.lives):
+        for i in range(lives):
             self.heartRects.append( self.heartSurf.get_rect(right = S_WIDTH - 100 - i * (heartSpriteWidth + 10), bottom = S_HEIGHT - 20 ) )
 
         # All sprites and rects for rendering purposes (lazy coder)
-        self.all = [(self.surf0, self.rect0), (self.surf1, self.rect1)]
+        self.all = [(self.surf0, self.rect0), (self.surf1, self.rect1), (self.surf2, self.rect2)]
 
     def timer(self):
         time = int((pygame.time.get_ticks() - self.start_time) / 1000) # time in whole seconds
@@ -230,9 +293,16 @@ class ScreenInfo:
                 self.heartRects.append(rect)
 
     # Reset life count when starting new game
-    def lifeCountReset(self):
-        for i in range(player.lives):
+    def lifeCountReset(self, lives):
+        self.heartRects.clear()
+        for i in range(lives):
             self.heartRects.append( self.heartSurf.get_rect(right = S_WIDTH - 100 - i * (heartSpriteWidth + 10), bottom = S_HEIGHT - 20 ) )
+    
+    def ammoCount(self, ammo): # Update on-screen ammo count
+        # Ammo count surface
+        self.surf2 = self.font.render(str(ammo), True, colors.BLACK)
+        self.rect2 = self.surf2.get_rect(topleft = (10, 10))
+        self.all[2] = (self.surf2, self.rect2)
 
 
 
@@ -311,8 +381,9 @@ def menu():
             # Reset playsound
             playSound2 = True
 
-        # Update enemies and clouds 
+        # Update enemies, bonuses and clouds 
         clouds.update()
+        bonuses.update()
         enemies.update()
 
         # Fill the screen
@@ -400,54 +471,66 @@ boomSprites = (
             pygame.image.load('things/boom/boom11.png').convert_alpha(),
             pygame.image.load('things/boom/boom12.png').convert_alpha()
 )
-# boom rocket sound effect
-boomSound1 = pygame.mixer.Sound('things/boom/boom.ogg')
-boomSound1.set_volume(.7) # lower the volume a bit
-# boom plane sound effect
-boomSound2 = pygame.mixer.Sound('things/boom/boom2.ogg')
-# lives hearts
+# Ammo
+ammoSprite = pygame.image.load('things/ammo.png').convert_alpha()
+# Heart
 heartSprite = pygame.image.load('things/heart.png').convert_alpha()
 # Width of heartSprite (used for rendering on screen in ScreenInfo)
 heartSpriteWidth = heartSprite.get_width()
+
+# Sounds loading
+# boom to rocket sound effect
+boomSound1 = pygame.mixer.Sound('things/boom/boom.ogg')
+boomSound1.set_volume(.7) # lower the volume a bit
+# boom to plane sound effect
+boomSound2 = pygame.mixer.Sound('things/boom/boom2.ogg')
 # Plane sound
 pygame.mixer.music.load('things/plane.ogg')
 pygame.mixer.music.set_volume(.5)
-# Load font
-font = pygame.font.Font('freesansbold.ttf', 55) # New font object
 # Start sound
-startSound = pygame.mixer.Sound('things/start.ogg')
+startSound = pygame.mixer.Sound('things/startgame.ogg')
 # Button sound effect
 buttonSound = pygame.mixer.Sound('things/button.ogg')
+buttonSound.set_volume(.5)
+# Bonus sound
+bonusSound = pygame.mixer.Sound('things/bonus.ogg')
+# No ammo sound
+noammoSound = pygame.mixer.Sound('things/noammo.ogg')
+
+# Font loading
+font = pygame.font.Font('freesansbold.ttf', 55) # New font object
 
 
 # Create a custom event for adding new enemies
 # Set a timer for creating enemies
 # Can be set outside the mainloop
 ADDENEMY = pygame.USEREVENT + 1
-pygame.time.set_timer(ADDENEMY, 250)
+pygame.time.set_timer(ADDENEMY, 250) # Spawn every .25 seconds
 # Event for adding clouds
 ADDCLOUD = pygame.USEREVENT + 2
-pygame.time.set_timer(ADDCLOUD, 1000)
+pygame.time.set_timer(ADDCLOUD, 1000) # Spawn every second
 
 
 # Instantiate player. Right now, this is just a rectangle
 player = Player()
 
 # Instantiate screen info
-screenInfo = ScreenInfo()
+screenInfo = ScreenInfo(player.kills, player.lives, player.ammo)
 
 
 # Create groups to hold enemy sprites, cloud sprites and all sprites
 # - enemies is used for collision detection and position updates
 # - shots is used for collision detection and position updates
+# - bonuses is used for collison detection and position updates
 # - clouds is used for position updates
 # - explosions is used for position updates
 # - allSprites is used for rendering
 enemies = pygame.sprite.Group()
 shots = pygame.sprite.Group()
-allSprites = pygame.sprite.Group()
+bonuses = pygame.sprite.Group()
 clouds = pygame.sprite.Group()
 explosions = pygame.sprite.Group()
+allSprites = pygame.sprite.Group()
 
 
 # Setup the clock
@@ -469,6 +552,7 @@ def main():
     allSprites.empty()
     enemies.empty()
     clouds.empty()
+    bonuses.empty()
     allSprites.add(player)
 
     # Variable to keep the main loop running
@@ -477,9 +561,11 @@ def main():
     # Reset all stats
     screenInfo.start_time = pygame.time.get_ticks()
     player.lives = 3
+    player.ammo = 15
     player.kills = 0
     screenInfo.killCount(player.kills)
-    screenInfo.lifeCountReset()
+    screenInfo.ammoCount(player.ammo)
+    screenInfo.lifeCountReset(player.lives)
     player.rect.midleft = (0, S_HEIGHT//2)
 
     # Main game loop 
@@ -496,11 +582,18 @@ def main():
         keys = pygame.key.get_pressed()
         player.update(keys)
         
-        # Update the position of enemies, shots, clouds and explosions
+        # Spawn bonuses
+        if randint(1,FPS*10) == 1: # Spawn every ~10 seconds
+            new_bonus = Bonus()
+            bonuses.add(new_bonus)
+            allSprites.add(new_bonus)
+
+        # Update the position of enemies, shots, clouds, explosions and bonuses
         enemies.update()
         shots.update()
         clouds.update()
         explosions.update()
+        bonuses.update()
 
         # Run the timer
         screenInfo.timer()
@@ -524,7 +617,7 @@ def main():
         collidedWith = pygame.sprite.spritecollideany(player, enemies)
         if collidedWith:
             # Update player's lives
-            player.lifeCount()
+            player.lifeCount(-1)
             # Kill the enemy
             collidedWith.kill()
             # If player has zero lives, quit the game
