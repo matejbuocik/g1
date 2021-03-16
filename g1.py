@@ -168,6 +168,10 @@ class Cloud(pygame.sprite.Sprite):
             self.kill()
 
 
+# Class of flying bonuses
+class Bonus(pygame.sprite.Sprite):
+    pass
+
 # Class for on-screen information
 class ScreenInfo:
     def __init__(self):
@@ -249,9 +253,16 @@ def menu():
     mousePos = (0,0)
     mouseClicked = False
 
+    # Used to play button sound only once
+    playSound1 = True
+    playSound2 = True
+
     # Menu loop
     runMenu = True
     while runMenu:
+        # Reset mouse clicked
+        mouseClicked = False
+
         # Event check
         for event in pygame.event.get():
             e = eventCheck(event)
@@ -269,20 +280,36 @@ def menu():
             
         # Start button
         if r1.collidepoint(mousePos):
+            # Change color
             activet1 = t11
+            # Play button sound only once
+            if playSound1:
+                buttonSound.play()
+                playSound1 = False
+            # If clicked, run the game
             if mouseClicked:
                 runMenu = False
                 startSound.play()
         else:
             activet1 = t1
+            # Reset playsound
+            playSound1 = True
         # Quit button
         if r2.collidepoint(mousePos):
+            # Change color
             activet2 = t22
+            # Play button sound only once
+            if playSound2:
+                buttonSound.play()
+                playSound2 = False
+            # If clicked, exit
             if mouseClicked:
                 pygame.quit()
                 sys.exit()
         else:
             activet2 = t2
+            # Reset playsound
+            playSound2 = True
 
         # Update enemies and clouds 
         clouds.update()
@@ -389,6 +416,8 @@ pygame.mixer.music.set_volume(.5)
 font = pygame.font.Font('freesansbold.ttf', 55) # New font object
 # Start sound
 startSound = pygame.mixer.Sound('things/start.ogg')
+# Button sound effect
+buttonSound = pygame.mixer.Sound('things/button.ogg')
 
 
 # Create a custom event for adding new enemies
