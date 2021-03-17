@@ -95,7 +95,7 @@ class Player(pygame.sprite.Sprite):
             self.last = now
             # Lower ammo
             self.ammoCount(-1)
-        else:
+        elif self.ammo < 1:
             noammoSound.play()
 
     # Update player's and on-screen kills
