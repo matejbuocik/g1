@@ -491,7 +491,7 @@ pygame.mixer.music.set_volume(.5)
 startSound = pygame.mixer.Sound('things/startgame.ogg')
 # Button sound effect
 buttonSound = pygame.mixer.Sound('things/button.ogg')
-buttonSound.set_volume(.5)
+buttonSound.set_volume(.3)
 # Bonus sound
 bonusSound = pygame.mixer.Sound('things/bonus.ogg')
 # No ammo sound
